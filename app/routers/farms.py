@@ -11,9 +11,6 @@ from app.schemas.farms_schema import PostFarm, DeleteFarm
 from app.miscFunctions.coordinates import check_coors
 from app.models import Farms, Users
 
-import requests
-from app.settings import settings
-
 router = APIRouter(
     prefix="/farms",
     tags=["Farms"]
