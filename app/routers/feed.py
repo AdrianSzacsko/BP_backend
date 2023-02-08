@@ -14,7 +14,7 @@ from app.security import auth
 from app.schemas.feed_schema import NewPost, GetFeed, GetFeedResponseProfile, GetFeedResponse
 from app.miscFunctions.coordinates import check_coors
 from app.models import Farms, Users, Users_attributes, Likes_dislikes, Post_photos
-from sqlalchemy import func, text
+from sqlalchemy import func, text, select
 from app.routers.profile import check_if_picture
 import datetime
 
@@ -28,16 +28,45 @@ router = APIRouter(
             response_model=list[GetFeedResponse],
             summary="Retrieves the available posts based on distance",
             responses={404: {"description": "String not found"}})
-def news_feed(get_feed: GetFeed,
-                    user: Users = Depends(auth.get_current_user),
-                    db: Session = Depends(create_connection)):
-    subquery1 = db.query(
+def news_feed(distance_range: int,
+              farm_id: int,
+              user: Users = Depends(auth.get_current_user),
+              db: Session = Depends(create_connection)):
+
+    subquery_lat = db.query(Farms.latitude.label("farm_lat")).filter(Farms.id == farm_id).subquery()
+    subquery_lon = db.query(Farms.longitude.label("farm_lon")).filter(Farms.id == farm_id).subquery()
+    subquery1 = db.query(subquery_lon, subquery_lat, Posts).subquery()
+    query = db.query(subquery1.c.farm_lat,
+                     subquery1.c.farm_lon,
+                     subquery1.c.id,
+                     subquery1.c.user_id,
+                     Users.first_name,
+                     Users.last_name,
+                     subquery1.c.post_name,
+                     subquery1.c.latitude,
+                     subquery1.c.longitude,
+                     subquery1.c.category,
+                     subquery1.c.text,
+                     subquery1.c.date
+                     ).join(Users, Users.id == subquery1.c.user_id).filter(
+        func.acos(
+            func.cos(func.radians(subquery1.c.farm_lat)) *
+            func.cos(func.radians(subquery1.c.latitude)) *
+            func.cos(func.radians(subquery1.c.longitude) -
+                     func.radians(subquery1.c.farm_lon)) +
+            func.sin(func.radians(subquery1.c.farm_lat)) *
+            func.sin(func.radians(subquery1.c.latitude))
+        ) * 6371 < distance_range
+    ).order_by(subquery1.c.date).limit(100)
+
+
+    """subquery1 = db.query(
         text("farms.latitude").label("farm_lat"),
         text("farms.longitude").label("farm_lon")
-    ).filter(text(f"farms.id = {get_feed.farm_id}")).subquery()
+    ).filter(text(f"farms.id = {farm_id}")).subquery()"""
 
     # Build subquery 2
-    posts = aliased(Posts)
+    """posts = aliased(Posts)
     subquery2 = db.query(
         subquery1.c.farm_lat,
         subquery1.c.farm_lon,
@@ -77,12 +106,13 @@ def news_feed(get_feed: GetFeed,
                      func.radians(calc.c.farm_lon)) +
             func.sin(func.radians(calc.c.farm_lat)) *
             func.sin(func.radians(calc.c.latitude))
-        ) * 6371 < get_feed.distance_range
+        ) * 6371 < distance_range
     ).order_by(
         calc.c.date
     ).limit(100)
 
     # Execute the query
+    result = query.all()"""
     result = query.all()
     if not result:
         raise HTTPException(
@@ -97,8 +127,8 @@ def news_feed(get_feed: GetFeed,
             summary="Retrieves the available posts for a user profile",
             responses={404: {"description": "String not found"}})
 def profile_news_feed(profile_id: int,
-                    user: Users = Depends(auth.get_current_user),
-                    db: Session = Depends(create_connection)):
+                      user: Users = Depends(auth.get_current_user),
+                      db: Session = Depends(create_connection)):
     result = db.query(Users).filter(Users.id == profile_id).first()
     if not result:
         raise HTTPException(
@@ -107,15 +137,15 @@ def profile_news_feed(profile_id: int,
         )
     calc = aliased(Posts)
     result = db.query(calc.id,
-                            calc.user_id,
-                            Users.first_name,
-                            Users.last_name,
-                            calc.post_name,
-                            calc.latitude,
-                            calc.longitude,
-                            calc.category,
-                            calc.text,
-                            calc.date) \
+                      calc.user_id,
+                      Users.first_name,
+                      Users.last_name,
+                      calc.post_name,
+                      calc.latitude,
+                      calc.longitude,
+                      calc.category,
+                      calc.text,
+                      calc.date) \
         .join(Users, calc.user_id == Users.id) \
         .filter(calc.user_id == profile_id) \
         .order_by(calc.date) \
@@ -125,8 +155,8 @@ def profile_news_feed(profile_id: int,
 
 
 @router.post("/new_post", status_code=HTTP_200_OK,
-            summary="Creates a new post for the current user",
-            responses={404: {"description": "String not found"}})
+             summary="Creates a new post for the current user",
+             responses={404: {"description": "String not found"}})
 def new_post(post: NewPost,
              user: Users = Depends(auth.get_current_user),
              db: Session = Depends(create_connection)):
@@ -145,8 +175,8 @@ def new_post(post: NewPost,
 
 
 @router.post("/new_post_photos", status_code=HTTP_200_OK,
-            summary="Creates a new post for the current user",
-            responses={404: {"description": "String not found"}})
+             summary="Creates a new post for the current user",
+             responses={404: {"description": "String not found"}})
 def new_post(post_id: int,
              files: list[UploadFile],
              user: Users = Depends(auth.get_current_user),
@@ -165,4 +195,3 @@ def new_post(post_id: int,
     db.add_all(photos)
     db.commit()
     return
-
