@@ -30,3 +30,11 @@ class Get_Profile(BaseModel):
     is_like: Optional[bool]
 
 
+class Like_dislike(BaseModel):
+    profile_id: int
+    is_like: Optional[bool]
+
+    class Config:
+        orm_mode = True
+
+

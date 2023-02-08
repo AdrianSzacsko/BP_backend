@@ -80,8 +80,10 @@ class Posts(Base):
     category = Column(VARCHAR(50), nullable=False)
     text = Column(TEXT, default='')
     date = Column(TIMESTAMP, default='now()')
-    CheckConstraint('latitude <= 90 and latitude >= -90', name='latitude_check'),
-    CheckConstraint('longitude <= 180 and longitude >= -180', name='longitude_check'),
+    CheckConstraint('latitude <= 90 and latitude >= -90', name='latitude_check')
+    CheckConstraint('longitude <= 180 and longitude >= -180', name='longitude_check')
+    #post_photos = relationship('Post_photos', backref='posts')
+    post_photos = relationship('Post_photos', back_populates='post')
 
 
 class Comments(Base):
@@ -100,7 +102,7 @@ class Post_photos(Base):
     id = Column(Integer, primary_key=True)
     post_id = Column(Integer, ForeignKey(Posts.id, ondelete='cascade'))
     photo = Column(TEXT)
-    #post = relationship("Posts", back_populates="photos")
+    post = relationship('Posts', back_populates='post_photos')
 
 
 class Settings(Base):

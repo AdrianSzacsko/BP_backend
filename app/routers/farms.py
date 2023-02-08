@@ -54,3 +54,16 @@ def delete_farm(
             detail=f"Farm not found."
         )
     return
+
+
+@router.get("/", status_code=HTTP_200_OK,
+             summary="Retrieves farms for the current user",
+             responses={404: {"description": "Location not found"}})
+def add_farm(user: Users = Depends(auth.get_current_user),
+             db: Session = Depends(create_connection)):
+    farms = db.query(Farms.id,
+                     Farms.name,
+                     Farms.latitude,
+                     Farms.longitude
+                     ).filter(Farms.user_id == user.id).all()
+    return farms

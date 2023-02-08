@@ -9,7 +9,7 @@ from app.schemas.auth_schema import Token
 from .db.database import create_connection
 from .models import Users
 
-from .routers import login, register, weather, farms, profile
+from .routers import login, register, weather, farms, profile, feed
 from .periodic_check import weather as PeriodicWeather
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,6 +44,7 @@ app.include_router(register.router)
 app.include_router(weather.router)
 app.include_router(farms.router)
 app.include_router(profile.router)
+app.include_router(feed.router)
 
 
 @app.get("/")
