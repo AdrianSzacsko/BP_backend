@@ -194,3 +194,26 @@ def new_post(post_id: int,
     db.add_all(photos)
     db.commit()
     return
+
+
+@router.delete("/{post_id}", status_code=HTTP_200_OK,
+             summary="Deletes a post for the current user",
+             responses={404: {"description": "String not found"}})
+def new_post(post_id: int,
+             user: Users = Depends(auth.get_current_user),
+             db: Session = Depends(create_connection)):
+    validation = db.query(Posts).filter(Posts.id == post_id, Posts.user_id == user.id).first()
+    if not validation:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail="Profile or Post was not found",
+        )
+    if validation.user_id != user.id:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail="Cannot delete others post",
+        )
+
+    db.delete(validation)
+    db.commit()
+    return
