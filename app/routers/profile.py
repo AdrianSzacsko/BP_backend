@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from sqlalchemy.orm import Session
-from starlette.responses import StreamingResponse
+from starlette.responses import StreamingResponse, Response
 
 from app.models import Users
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
@@ -15,6 +15,7 @@ from app.schemas.profile_schema import Search_profile, Get_Profile, Get_farms, L
 from app.miscFunctions.coordinates import check_coors
 from app.models import Farms, Users, Users_attributes, Likes_dislikes
 from sqlalchemy import func
+from PIL import Image
 
 router = APIRouter(
     prefix="/profile",
@@ -30,14 +31,14 @@ def search_profiles(string: str,
                     user: Users = Depends(auth.get_current_user),
                     db: Session = Depends(create_connection)):
     query = db.query(func.concat(Users.first_name, ' ', Users.last_name).label("name"),
-                     Users.id, Users.photo)
+                     Users.id)
     results = query.filter(
         func.lower(func.concat(func.lower(Users.first_name), ' ', func.lower(Users.last_name))).like(f"%{string.lower()}%")).all()
 
     return [Search_profile(**profile) for profile in results]
 
 
-@router.get("/{profile_id}}", status_code=HTTP_200_OK,
+@router.get("/{profile_id}", status_code=HTTP_200_OK,
             response_model=Get_Profile,
             summary="Retrieves the available profile",
             responses={404: {"description": "String not found"}})
@@ -47,7 +48,6 @@ def get_profile(profile_id: str,
     profile_query = db.query(Users.id,
                      Users.first_name,
                      Users.last_name,
-                     Users.photo,
                      Users_attributes.post_count,
                      Users_attributes.like_count,
                      Users_attributes.dislike_count,
@@ -66,9 +66,39 @@ def get_profile(profile_id: str,
     else:
         profile.is_like = is_like_query.is_like
 
-
-
     return profile
+
+
+@router.get("/profile_pic/{profile_id}", status_code=HTTP_200_OK,
+            summary="Retrieves a profile picture based on the id.",
+            responses={404: {"description": "Post picture was not found."}})
+def get_post_pic(profile_id: int,
+                 db: Session = Depends(create_connection),
+                 user: Users = Depends(auth.get_current_user)):
+    """
+        Input parameters:
+        - **profile_id**: id of the user
+
+        Response values:
+        - binary form of profile picture
+    """
+
+    result = db.query(Users.photo).filter(Users.id == profile_id).first()
+
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post picture was not found."
+        )
+
+    if result[0] is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post picture was not found."
+        )
+    # image_type = magic.from_buffer(filter_query[0], mime=True)
+    image_type = Image.open(io.BytesIO(result[0])).format.lower()
+    return Response(content=bytes(result[0]), media_type=f'image/{image_type}')
 
 
 @router.delete("/delete", status_code=HTTP_200_OK,

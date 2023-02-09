@@ -25,6 +25,7 @@ class GetFeedResponse(BaseModel):
     category: str
     text: str
     date: datetime.datetime
+    photos_id: Optional[list[int]]
 
     class Config:
         orm_mode = True
@@ -41,6 +42,7 @@ class GetFeedResponseProfile(BaseModel):
     category: str
     text: str
     date: datetime.datetime
+    photos_id: Optional[list[int]]
 
     class Config:
         orm_mode = True

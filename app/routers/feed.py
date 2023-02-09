@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from sqlalchemy.orm import Session, aliased
-from starlette.responses import StreamingResponse
+from starlette.responses import StreamingResponse, Response
 
 from app.models import Users, Posts
 from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
@@ -17,6 +17,7 @@ from app.models import Farms, Users, Users_attributes, Likes_dislikes, Post_phot
 from sqlalchemy import func, text, select
 from app.routers.profile import check_if_picture
 import datetime
+from PIL import Image
 
 router = APIRouter(
     prefix="/feed",
@@ -59,67 +60,55 @@ def news_feed(distance_range: int,
         ) * 6371 < distance_range
     ).order_by(subquery1.c.date).limit(100)
 
-
-    """subquery1 = db.query(
-        text("farms.latitude").label("farm_lat"),
-        text("farms.longitude").label("farm_lon")
-    ).filter(text(f"farms.id = {farm_id}")).subquery()"""
-
-    # Build subquery 2
-    """posts = aliased(Posts)
-    subquery2 = db.query(
-        subquery1.c.farm_lat,
-        subquery1.c.farm_lon,
-        posts.id,
-        posts.user_id,
-        posts.post_name,
-        posts.latitude,
-        posts.longitude,
-        posts.category,
-        posts.text,
-        posts.date
-    ).select_entity_from(posts).subquery()
-
-    # Build main query
-    calc = aliased(subquery2)
-    users = aliased(Users)
-    query = db.query(
-        calc.c.farm_lat,
-        calc.c.farm_lon,
-        calc.c.id,
-        calc.c.user_id,
-        users.first_name,
-        users.last_name,
-        calc.c.post_name,
-        calc.c.latitude,
-        calc.c.longitude,
-        calc.c.category,
-        calc.c.text,
-        calc.c.date
-    ).select_entity_from(calc).join(
-        users, calc.c.user_id == users.id
-    ).filter(
-        func.acos(
-            func.cos(func.radians(calc.c.farm_lat)) *
-            func.cos(func.radians(calc.c.latitude)) *
-            func.cos(func.radians(calc.c.longitude) -
-                     func.radians(calc.c.farm_lon)) +
-            func.sin(func.radians(calc.c.farm_lat)) *
-            func.sin(func.radians(calc.c.latitude))
-        ) * 6371 < distance_range
-    ).order_by(
-        calc.c.date
-    ).limit(100)
-
-    # Execute the query
-    result = query.all()"""
     result = query.all()
     if not result:
         raise HTTPException(
             status_code=HTTP_404_NOT_FOUND,
             detail="Feed is empty.",
         )
-    return result
+    post_list = []
+    for post in result:
+        curr_post = GetFeedResponse(**post)
+        photo_result = db.query(Post_photos.id).filter(
+            Post_photos.post_id == curr_post.id).order_by(
+            Post_photos.id).all()
+        curr_post.photos_id = [photo_result[i]['id'] for i in range(len(photo_result))]
+        post_list.append(curr_post)
+
+    return post_list
+
+
+
+@router.get("/post_pic/{post_pic}", status_code=HTTP_200_OK,
+            summary="Retrieves a post picture based on the id.",
+            responses={404: {"description": "Post picture was not found."}})
+def get_post_pic(post_pic: int,
+                 db: Session = Depends(create_connection),
+                 user: Users = Depends(auth.get_current_user)):
+    """
+        Input parameters:
+        - **profile_id**: id of the user
+
+        Response values:
+        - binary form of profile picture
+    """
+
+    result = db.query(Post_photos.photo).filter(Post_photos.id == post_pic).first()
+
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post picture was not found."
+        )
+
+    if result[0] is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post picture was not found."
+        )
+    # image_type = magic.from_buffer(filter_query[0], mime=True)
+    image_type = Image.open(io.BytesIO(result[0])).format.lower()
+    return Response(content=bytes(result[0]), media_type=f'image/{image_type}')
 
 
 @router.get("/{profile_id}", status_code=HTTP_200_OK,
@@ -151,7 +140,17 @@ def profile_news_feed(profile_id: int,
         .order_by(calc.date) \
         .limit(100) \
         .all()
-    return result
+
+    post_list = []
+    for post in result:
+        curr_post = GetFeedResponseProfile(**post)
+        photo_result = db.query(Post_photos.id).filter(
+            Post_photos.post_id == curr_post.id).order_by(
+            Post_photos.id).all()
+        curr_post.photos_id = [photo_result[i]['id'] for i in range(len(photo_result))]
+        post_list.append(curr_post)
+
+    return post_list
 
 
 @router.post("/new_post", status_code=HTTP_200_OK,

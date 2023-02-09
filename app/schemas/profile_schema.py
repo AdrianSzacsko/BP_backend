@@ -5,7 +5,6 @@ from typing import Optional
 class Search_profile(BaseModel):
     name: str
     id: int
-    photo: Optional[bytes]
 
     class Config:
         orm_mode = True
@@ -22,7 +21,6 @@ class Get_Profile(BaseModel):
     id: int
     first_name: str
     last_name: str
-    photo: Optional[bytes]
     post_count: int
     like_count: int
     dislike_count: int
