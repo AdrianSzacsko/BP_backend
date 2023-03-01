@@ -58,3 +58,15 @@ class HourlyResponse(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class SearchResponse(BaseModel):
+    display_name: Optional[str]
+    type: Optional[str]
+    lat: Optional[float]
+    lon: Optional[float]
+    importance: Optional[float]
+    icon: Optional[str]
+
+    class Config:
+        orm_mode = True

@@ -8,7 +8,7 @@ from app.db.database import create_connection
 from app.security import auth
 
 from app.schemas.weather_schema import CurrentResponse, HourlyResponse, WeatherVariables, WeatherPydantic, \
-    WeatherLocation
+    WeatherLocation, SearchResponse
 
 import requests
 from app.settings import settings
@@ -49,6 +49,25 @@ def get_OpenWeather(lat: float, long: float, curr=True):
         return weather_data
     except requests.exceptions.HTTPError as errh:
         raise HTTPException(status_code=500, detail="OpenWeatherMap API Error")
+    except requests.exceptions.ConnectionError as errc:
+        raise HTTPException(status_code=500, detail="Error Connecting")
+    except requests.exceptions.Timeout as errt:
+        raise HTTPException(status_code=500, detail="Timeout Error")
+    except requests.exceptions.RequestException as err:
+        raise HTTPException(status_code=500, detail="Something went wrong")
+
+
+def get_Nominatim(search_string: str):
+    if len(search_string) < 1:
+        raise HTTPException(status_code=500, detail="Search string not correct")
+    try:
+        response = requests.get(
+            f"https://nominatim.openstreetmap.org/search?q={search_string}&format=json&accept-language=en")
+        response.raise_for_status()
+        search_data = response.json()
+        return search_data
+    except requests.exceptions.HTTPError as errh:
+        raise HTTPException(status_code=500, detail="Nominatim API Error")
     except requests.exceptions.ConnectionError as errc:
         raise HTTPException(status_code=500, detail="Error Connecting")
     except requests.exceptions.Timeout as errt:
@@ -104,7 +123,6 @@ def get_curr_weather(lat: Optional[float] = 0,
                      long: Optional[float] = 0,
                      user: Users = Depends(auth.get_current_user),
                      db: Session = Depends(create_connection)):
-
     return create_dict_curr_weather(lat, long)
 
 
@@ -126,3 +144,24 @@ from app.periodic_check.weather import update_weather_db
             responses={404: {"description": "Location not found"}})
 def get_hourly_weather(db: Session = Depends(create_connection)):
     update_weather_db(db)
+
+
+@router.get("/search/{string}", response_model=list[SearchResponse], status_code=HTTP_200_OK,
+            summary="Retrieves the location from text search",
+            responses={404: {"description": "Location not found"}})
+def get_search_location(string: str,
+                       user: Users = Depends(auth.get_current_user),
+                       db: Session = Depends(create_connection)):
+    data = get_Nominatim(string)
+    result = []
+    for item in data:
+        result.append({})
+        for key in SearchResponse.__fields__.keys():
+            result[len(result) - 1][key] = item.get(key, None)
+        # check for duplicate
+        for dictionary in result[:len(result)-1]:
+            if result[len(result) - 1]['type'] == dictionary['type'] \
+                    and result[len(result) - 1]['display_name'] == dictionary['display_name']:
+                result.pop(len(result) - 1)
+                break
+    return result
