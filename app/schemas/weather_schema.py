@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 
@@ -8,37 +8,31 @@ class WeatherLocation(BaseModel):
 
 
 class WeatherPydantic(BaseModel):
-    coord_lat: Optional[float]
-    coord_lon: Optional[float]
-    timezone: Optional[int]
-    name: Optional[str]
-    sys_country: Optional[str]
-    sys_sunset: Optional[int]
-    sys_sunrise: Optional[int]
-
-    class Config:
-        orm_mode = True
+    coord_lat: Optional[float] = Field(default=0)
+    coord_lon: Optional[float] = Field(default=0)
+    timezone: Optional[int] = Field(default=0)
+    name: Optional[str] = Field(default='')
+    sys_country: Optional[str] = Field(default='')
+    sys_sunset: Optional[int] = Field(default=0)
+    sys_sunrise: Optional[int] = Field(default=0)
 
 
 class WeatherVariables(BaseModel):
-    weather_main: Optional[str]
-    weather_icon: Optional[str]
-    main_temp: Optional[float]
-    main_feels_like: Optional[float]
-    main_pressure: Optional[int]
-    main_sea_level: Optional[int]
-    main_grnd_level: Optional[int]
-    visibility: Optional[int]
-    wind_speed: Optional[float]
-    wind_deg: Optional[int]
-    wind_gust: Optional[float]
-    clouds_all: Optional[float]
-    rain_1h: Optional[float]
-    snow_1h: Optional[float]
-    pop: Optional[float]
-
-    class Config:
-        orm_mode = True
+    weather_main: Optional[str] = Field(default='')
+    weather_icon: Optional[str] = Field(default='')
+    main_temp: Optional[float] = Field(default=0)
+    main_feels_like: Optional[float] = Field(default=0)
+    main_pressure: Optional[int] = Field(default=0)
+    main_sea_level: Optional[int] = Field(default=0)
+    main_grnd_level: Optional[int] = Field(default=0)
+    visibility: Optional[int] = Field(default=0)
+    wind_speed: Optional[float] = Field(default=0)
+    wind_deg: Optional[int] = Field(default=0)
+    wind_gust: Optional[float] = Field(default=0)
+    clouds_all: Optional[float] = Field(default=0)
+    rain_1h: Optional[float] = Field(default=0)
+    snow_1h: Optional[float] = Field(default=0)
+    pop: Optional[float] = Field(default=0)
 
 
 class CurrentResponse(BaseModel):
