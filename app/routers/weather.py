@@ -1,3 +1,5 @@
+from enum import Enum
+
 from fastapi import APIRouter, HTTPException, status, Depends
 from sqlalchemy.orm import Session
 from app.models import Users
@@ -8,7 +10,7 @@ from app.db.database import create_connection
 from app.security import auth
 
 from app.schemas.weather_schema import CurrentResponse, HourlyResponse, WeatherVariables, WeatherPydantic, \
-    WeatherLocation, SearchResponse
+    WeatherLocation, SearchResponse, DailyResponse, WeatherVariablesDaily
 
 import requests
 from app.settings import settings
@@ -19,6 +21,12 @@ router = APIRouter(
     prefix="/weather",
     tags=["Weather"]
 )
+
+
+class WeatherType(Enum):
+    Current = 1
+    Hourly = 2
+    Daily = 3
 
 
 def flatten_dict(d, parent_key='', sep='_'):
@@ -35,15 +43,19 @@ def flatten_dict(d, parent_key='', sep='_'):
     return dict(items)
 
 
-def get_OpenWeather(lat: float, long: float, curr=True):
+def get_OpenWeather(lat: float, long: float, type=WeatherType.Current):
     check_coors(long, lat)
     try:
-        if curr:
+        if type == WeatherType.Current:
             response = requests.get(
                 f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={long}&appid={settings.OPENWEATHERMAP_KEY}&units=metric")
+        elif type == WeatherType.Hourly:
+            response = requests.get(
+                f"https://pro.openweathermap.org/data/2.5/forecast/hourly?lat={lat}&lon={long}&appid={settings.OPENWEATHERMAP_KEY}&units=metric&cnt=96")
         else:
             response = requests.get(
-                f"https://pro.openweathermap.org/data/2.5/forecast/hourly?lat={lat}&lon={long}&appid={settings.OPENWEATHERMAP_KEY}&units=metric")
+                f"https://api.openweathermap.org/data/2.5/forecast/daily?lat={lat}&lon={long}&appid={settings.OPENWEATHERMAP_KEY}&units=metric&cnt=16")
+
         response.raise_for_status()
         weather_data = response.json()
         return weather_data
@@ -55,6 +67,85 @@ def get_OpenWeather(lat: float, long: float, curr=True):
         raise HTTPException(status_code=500, detail="Timeout Error")
     except requests.exceptions.RequestException as err:
         raise HTTPException(status_code=500, detail="Something went wrong")
+
+
+def get_keys_values(variables, key, dict):
+    try:
+        variables[key] = dict.get(key, 0)
+    except Exception:
+        variables[key] = dict.get(key, '')
+    return variables
+
+
+def create_dict_curr_weather(lat: float, long: float):
+    data = get_OpenWeather(lat, long, type=WeatherType.Current)
+    flattened = flatten_dict(data)
+
+    weather = {}
+    variables = {}
+
+    for key in WeatherVariables.__fields__.keys():
+        get_keys_values(variables, key, flattened)
+
+    for key in WeatherPydantic.__fields__.keys():
+        get_keys_values(weather, key, flattened)
+    return {'weather': weather, 'variables': variables}
+
+
+def create_dict_hourly_weather(lat: float, long: float):
+    data = get_OpenWeather(lat, long, type=WeatherType.Hourly)
+    weather = {}
+    variables = []
+    for i in range(len(data['list'])):
+        flattened = flatten_dict(data['list'][i])
+        variables.append({})
+        for key in WeatherVariables.__fields__.keys():
+            get_keys_values(variables[i], key, flattened)
+
+    data['sys'] = data['city']
+    del data['city']
+    flattened = flatten_dict(data)
+    for key in WeatherPydantic.__fields__.keys():
+        get_keys_values(weather, key, flattened)
+
+    # some keys have sys in them, we need to delete them
+    bad_keys = {'sys_name': 'name', 'sys_coord_lat': 'coord_lat',
+                'sys_coord_lon': 'coord_lon', 'sys_timezone': 'timezone'}
+    for key in bad_keys.keys():
+        try:
+            weather[bad_keys[key]] = flattened.get(key, 0)
+        except Exception:
+            weather[bad_keys[key]] = flattened.get(key, '')
+
+    return {'weather': weather, 'variables': variables}
+
+
+def create_dict_daily_weather(lat: float, long: float):
+    data = get_OpenWeather(lat, long, type=WeatherType.Daily)
+    weather = {}
+    variables = []
+    for i in range(len(data['list'])):
+        flattened = flatten_dict(data['list'][i])
+        variables.append({})
+        for key in WeatherVariablesDaily.__fields__.keys():
+            get_keys_values(variables[i], key, flattened)
+
+    data['sys'] = data['city']
+    del data['city']
+    flattened = flatten_dict(data)
+    for key in WeatherPydantic.__fields__.keys():
+        get_keys_values(weather, key, flattened)
+
+    # some keys have sys in them, we need to delete them
+    bad_keys = {'sys_name': 'name', 'sys_coord_lat': 'coord_lat',
+                'sys_coord_lon': 'coord_lon', 'sys_timezone': 'timezone'}
+    for key in bad_keys.keys():
+        try:
+            weather[bad_keys[key]] = flattened.get(key, 0)
+        except Exception:
+            weather[bad_keys[key]] = flattened.get(key, '')
+
+    return {'weather': weather, 'variables': variables}
 
 
 def get_Nominatim(search_string: str):
@@ -75,65 +166,37 @@ def get_Nominatim(search_string: str):
     except requests.exceptions.RequestException as err:
         raise HTTPException(status_code=500, detail="Something went wrong")
 
-
-def create_dict_curr_weather(lat: float, long: float):
-    data = get_OpenWeather(lat, long, curr=True)
-    flattened = flatten_dict(data)
-
-    weather = {}
-    variables = {}
-
-    for key in WeatherVariables.__fields__.keys():
-        variables[key] = flattened.get(key, None)
-
-    for key in WeatherPydantic.__fields__.keys():
-        weather[key] = flattened.get(key, None)
-    return {'weather': weather, 'variables': variables}
-
-
-def create_dict_hourly_weather(lat: float, long: float):
-    data = get_OpenWeather(lat, long, curr=False)
-    weather = {}
-    variables = []
-    for i in range(len(data['list'])):
-        flattened = flatten_dict(data['list'][i])
-        variables.append({})
-        for key in WeatherVariables.__fields__.keys():
-            variables[i][key] = flattened.get(key, None)
-
-    data['sys'] = data['city']
-    del data['city']
-    flattened = flatten_dict(data)
-    for key in WeatherPydantic.__fields__.keys():
-        weather[key] = flattened.get(key, None)
-
-    # some keys have sys in them, we need to delete them
-    bad_keys = {'sys_name': 'name', 'sys_coord_lat': 'coord_lat',
-                'sys_coord_lon': 'coord_lon', 'sys_timezone': 'timezone'}
-    for key in bad_keys.keys():
-        weather[bad_keys[key]] = flattened.get(key, None)
-
-    return {'weather': weather, 'variables': variables}
-
-
-@router.get("/curr/{latitude}{longitude}", response_model=CurrentResponse, status_code=HTTP_200_OK,
+@router.get("/curr/{lat}/{long}", response_model=CurrentResponse, status_code=HTTP_200_OK,
             summary="Retrieves current weather for a given location.",
             responses={404: {"description": "Location not found"}})
-def get_curr_weather(lat: Optional[float] = 0,
-                     long: Optional[float] = 0,
-                     user: Users = Depends(auth.get_current_user),
+def get_curr_weather(lat: float,
+                     long: float,
+                     #user: Users = Depends(auth.get_current_user),
                      db: Session = Depends(create_connection)):
     return create_dict_curr_weather(lat, long)
 
 
-@router.get("/hourly/{latitude}{longitude}", response_model=HourlyResponse, status_code=HTTP_200_OK,
-            summary="Retrieves current weather for a given location.",
+@router.get("/hourly/{lat}/{long}", response_model=HourlyResponse, status_code=HTTP_200_OK,
+            summary="Retrieves hourly weather for a given location.",
             responses={404: {"description": "Location not found"}})
-def get_hourly_weather(lat: Optional[float] = 0,
-                       long: Optional[float] = 0,
-                       user: Users = Depends(auth.get_current_user),
+def get_hourly_weather(lat: float,
+                       long: float,
+                       #user: Users = Depends(auth.get_current_user),
                        db: Session = Depends(create_connection)):
     return create_dict_hourly_weather(lat, long)
+
+
+from app.periodic_check.weather import update_weather_db
+
+
+@router.get("/daily/{lat}/{long}", response_model=DailyResponse, status_code=HTTP_200_OK,
+            summary="Retrieves daily weather for a given location.",
+            responses={404: {"description": "Location not found"}})
+def get_daily_weather(lat: float,
+                       long: float,
+                       #user: Users = Depends(auth.get_current_user),
+                       db: Session = Depends(create_connection)):
+    return create_dict_daily_weather(lat, long)
 
 
 from app.periodic_check.weather import update_weather_db

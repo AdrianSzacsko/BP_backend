@@ -20,9 +20,37 @@ class WeatherPydantic(BaseModel):
         orm_mode = True
 
 
+class WeatherVariablesDaily(BaseModel):
+    temp_day: Optional[float]
+    temp_min: Optional[float]
+    temp_max: Optional[float]
+    temp_night: Optional[float]
+    temp_eve: Optional[float]
+    temp_morn: Optional[float]
+    feels_like_day: Optional[float]
+    feels_like_night: Optional[float]
+    feels_like_eve: Optional[float]
+    feels_like_morn: Optional[float]
+    pressure: Optional[int]
+    humidity: Optional[int]
+    weather_main: Optional[str]
+    weather_icon: Optional[str]
+    weather_description: Optional[str]
+    weather_id: Optional[int]
+    wind_speed: Optional[float]
+    wind_deg: Optional[int]
+    wind_gust: Optional[float]
+    clouds: Optional[float]
+    rain: Optional[float]
+    snow: Optional[float]
+    pop: Optional[float]
+
+
 class WeatherVariables(BaseModel):
     weather_main: Optional[str]
     weather_icon: Optional[str]
+    weather_description: Optional[str]
+    weather_id: Optional[int]
     main_temp: Optional[float]
     main_temp_min: Optional[float]
     main_temp_max: Optional[float]
@@ -55,6 +83,14 @@ class CurrentResponse(BaseModel):
 class HourlyResponse(BaseModel):
     weather: WeatherPydantic
     variables: list[WeatherVariables]
+
+    class Config:
+        orm_mode = True
+
+
+class DailyResponse(BaseModel):
+    weather: WeatherPydantic
+    variables: list[WeatherVariablesDaily]
 
     class Config:
         orm_mode = True
