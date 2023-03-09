@@ -14,7 +14,7 @@ class Users(Base):
     last_name = Column(VARCHAR(50), nullable=False)
     password = Column(VARCHAR(60), nullable=False)
     email = Column(VARCHAR(50), nullable=False)
-    photo = Column(BYTEA, nullable=True)
+    photo = Column(VARCHAR(100), nullable=True)
     registration_date = Column(TIMESTAMP(timezone=False), nullable=False, server_default=text('now()'))
 
 
@@ -101,7 +101,7 @@ class Post_photos(Base):
 
     id = Column(Integer, primary_key=True)
     post_id = Column(Integer, ForeignKey(Posts.id, ondelete='cascade'))
-    photo = Column(TEXT)
+    photo = Column(VARCHAR(100))
     post = relationship('Posts', back_populates='post_photos')
 
 

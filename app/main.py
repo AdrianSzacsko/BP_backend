@@ -2,7 +2,6 @@ import asyncio
 
 import socketio as socketio
 from fastapi import FastAPI, Depends, BackgroundTasks
-from fastapi_utils.tasks import repeat_every
 from sqlalchemy.orm import Session
 
 from app.schemas.auth_schema import Token

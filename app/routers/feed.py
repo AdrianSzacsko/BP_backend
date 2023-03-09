@@ -1,3 +1,6 @@
+import random
+import string
+
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from sqlalchemy.orm import Session, aliased
 from starlette.responses import StreamingResponse, Response
@@ -106,9 +109,13 @@ def get_post_pic(post_pic: int,
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Post picture was not found."
         )
+
+    with open("Images/Feed/" + result[0], "rb") as buffer:
+        image_bytes = buffer.read()
+
     # image_type = magic.from_buffer(filter_query[0], mime=True)
-    image_type = Image.open(io.BytesIO(result[0])).format.lower()
-    return Response(content=bytes(result[0]), media_type=f'image/{image_type}')
+    image_type = Image.open(io.BytesIO(image_bytes)).format.lower()
+    return Response(content=bytes(image_bytes), media_type=f'image/{image_type}')
 
 
 @router.get("/{profile_id}", status_code=HTTP_200_OK,
@@ -174,9 +181,9 @@ def new_post(post: NewPost,
 
 
 @router.post("/new_post_photos", status_code=HTTP_200_OK,
-             summary="Creates a new post for the current user",
+             summary="Add new post photos for a post",
              responses={404: {"description": "String not found"}})
-def new_post(post_id: int,
+def new_post_photos(post_id: int,
              files: list[UploadFile],
              user: Users = Depends(auth.get_current_user),
              db: Session = Depends(create_connection)):
@@ -189,7 +196,14 @@ def new_post(post_id: int,
     photos = []
     for photo in files:
         bytes = check_if_picture(photo)
-        photos.append(Post_photos(photo=bytes, post_id=post_id))
+
+        letters = string.ascii_letters + string.digits
+        path = ''.join(random.choice(letters) for _ in range(50)) + "." + photo.content_type.split("/")[1]
+
+        with open("Images/Feed/" + path, "wb") as buffer:
+            buffer.write(bytes)
+
+        photos.append(Post_photos(photo=path, post_id=post_id))
 
     db.add_all(photos)
     db.commit()
@@ -199,7 +213,7 @@ def new_post(post_id: int,
 @router.delete("/{post_id}", status_code=HTTP_200_OK,
              summary="Deletes a post for the current user",
              responses={404: {"description": "String not found"}})
-def new_post(post_id: int,
+def delete_post(post_id: int,
              user: Users = Depends(auth.get_current_user),
              db: Session = Depends(create_connection)):
     validation = db.query(Posts).filter(Posts.id == post_id, Posts.user_id == user.id).first()

@@ -51,7 +51,7 @@ def get_OpenWeather(lat: float, long: float, type=WeatherType.Current):
                 f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={long}&appid={settings.OPENWEATHERMAP_KEY}&units=metric")
         elif type == WeatherType.Hourly:
             response = requests.get(
-                f"https://pro.openweathermap.org/data/2.5/forecast/hourly?lat={lat}&lon={long}&appid={settings.OPENWEATHERMAP_KEY}&units=metric&cnt=96")
+                f"https://pro.openweathermap.org/data/2.5/forecast/hourly?lat={lat}&lon={long}&appid={settings.OPENWEATHERMAP_KEY}&units=metric&cnt=24")
         else:
             response = requests.get(
                 f"https://api.openweathermap.org/data/2.5/forecast/daily?lat={lat}&lon={long}&appid={settings.OPENWEATHERMAP_KEY}&units=metric&cnt=16")
@@ -213,7 +213,6 @@ def get_hourly_weather(db: Session = Depends(create_connection)):
             summary="Retrieves the location from text search",
             responses={404: {"description": "Location not found"}})
 def get_search_location(string: str,
-                       user: Users = Depends(auth.get_current_user),
                        db: Session = Depends(create_connection)):
     data = get_Nominatim(string)
     result = []

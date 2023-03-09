@@ -26,6 +26,7 @@ class Get_Profile(BaseModel):
     dislike_count: int
     farms: Optional[list[Get_farms]]
     is_like: Optional[bool]
+    picture_path: Optional[str]
 
 
 class Like_dislike(BaseModel):

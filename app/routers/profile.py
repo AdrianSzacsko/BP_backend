@@ -1,3 +1,7 @@
+import os
+import random
+import string
+
 from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 from starlette.responses import StreamingResponse, Response
@@ -33,7 +37,8 @@ def search_profiles(string: str,
     query = db.query(func.concat(Users.first_name, ' ', Users.last_name).label("name"),
                      Users.id)
     results = query.filter(
-        func.lower(func.concat(func.lower(Users.first_name), ' ', func.lower(Users.last_name))).like(f"%{string.lower()}%")).all()
+        func.lower(func.concat(func.lower(Users.first_name), ' ', func.lower(Users.last_name))).like(
+            f"%{string.lower()}%")).all()
 
     return [Search_profile(**profile) for profile in results]
 
@@ -43,21 +48,22 @@ def search_profiles(string: str,
             summary="Retrieves the available profile",
             responses={404: {"description": "String not found"}})
 def get_profile(profile_id: str,
-                    user: Users = Depends(auth.get_current_user),
-                    db: Session = Depends(create_connection)):
+                user: Users = Depends(auth.get_current_user),
+                db: Session = Depends(create_connection)):
     profile_query = db.query(Users.id,
-                     Users.first_name,
-                     Users.last_name,
-                     Users_attributes.post_count,
-                     Users_attributes.like_count,
-                     Users_attributes.dislike_count,
-                     ).filter(Users.id == profile_id).join(Users_attributes).first()
+                             Users.first_name,
+                             Users.last_name,
+                             Users_attributes.post_count,
+                             Users_attributes.like_count,
+                             Users_attributes.dislike_count,
+                             ).filter(Users.id == profile_id).join(Users_attributes).first()
 
     farms_query = db.query(Farms.id,
                            Farms.name,
                            Farms.latitude,
                            Farms.longitude).filter(Farms.user_id == profile_id).all()
-    is_like_query = db.query(Likes_dislikes).filter(Likes_dislikes.followed_profile == profile_id, Likes_dislikes.follower == user.id).first()
+    is_like_query = db.query(Likes_dislikes).filter(Likes_dislikes.followed_profile == profile_id,
+                                                    Likes_dislikes.follower == user.id).first()
 
     profile = Get_Profile(**profile_query)
     profile.farms = [Get_farms(**farm) for farm in farms_query]
@@ -88,32 +94,40 @@ def get_post_pic(profile_id: int,
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Post picture was not found."
+            detail=f"Profile picture was not found."
         )
 
     if result[0] is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Post picture was not found."
+            detail=f"Profile picture was not found."
         )
     # image_type = magic.from_buffer(filter_query[0], mime=True)
-    image_type = Image.open(io.BytesIO(result[0])).format.lower()
-    return Response(content=bytes(result[0]), media_type=f'image/{image_type}')
+
+    with open("Images/Profile/" + result[0], "rb") as buffer:
+        image_bytes = buffer.read()
+
+    image_type = Image.open(io.BytesIO(image_bytes)).format.lower()
+    return Response(content=bytes(image_bytes), media_type=f'image/{image_type}')
+
+    # image_type = Image.open(io.BytesIO(result[0])).format.lower()
+    # return Response(content=bytes(result[0]), media_type=f'image/{image_type}')
 
 
 @router.delete("/delete", status_code=HTTP_200_OK,
-            summary="Deletes the user profile",
-            responses={404: {"description": "String not found"}})
+               summary="Deletes the user profile",
+               responses={404: {"description": "String not found"}})
 def delete_profile(user: Users = Depends(auth.get_current_user),
                    db: Session = Depends(create_connection)):
     query = db.query(Users).filter(Users.id == user.id).first()
     if query:
 
-        #likes and dislikes should be corrected
+        # likes and dislikes should be corrected
         followed_profiles = db.query(Likes_dislikes).filter(Likes_dislikes.follower == user.id).all()
         for followed_profile in followed_profiles:
             if followed_profile.is_like:
-                profile = db.query(Users_attributes).filter(Users_attributes.user_id == followed_profile.followed_profile)
+                profile = db.query(Users_attributes).filter(
+                    Users_attributes.user_id == followed_profile.followed_profile)
                 profile.update({'like_count': profile.first().like_count - 1})
             elif followed_profile.is_like is False:
                 profile = db.query(Users_attributes).filter(
@@ -153,8 +167,8 @@ def check_if_picture(file: UploadFile = File(...)):
             summary="Puts new profile picture",
             responses={404: {"description": "Profile not found"}})
 def modify_profile_pic(file: UploadFile = File(...),
-                    user: Users = Depends(auth.get_current_user),
-                    db: Session = Depends(create_connection)):
+                       user: Users = Depends(auth.get_current_user),
+                       db: Session = Depends(create_connection)):
     query = db.query(Users).filter(Users.id == user.id)
     query_row = query.first()
 
@@ -164,7 +178,15 @@ def modify_profile_pic(file: UploadFile = File(...),
             detail="Profile was not found.",
         )
     file_bytes = check_if_picture(file)
-    query.update({"photo": file_bytes})
+
+    letters = string.ascii_letters + string.digits
+    path = ''.join(random.choice(letters) for _ in range(50)) + "." + file.content_type.split("/")[1]
+
+    with open("Images/Profile/" + path, "wb") as buffer:
+        buffer.write(file_bytes)
+
+    query.update({"photo": path})
+    # query.update({"photo": file_bytes})
     db.commit()
     return StreamingResponse(io.BytesIO(file_bytes), media_type=file.content_type)
 
@@ -195,6 +217,14 @@ def delete_profile_pic(db: Session = Depends(create_connection),
             detail="Not authorized to perform this action."
         )
 
+    if os.path.exists("Images/Profile/" + query_row.photo):
+        os.remove("Images/Profile/" + query_row.photo)
+    else:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail="Profile picture was not found.",
+        )
+
     query.update({"photo": None})
     db.commit()
 
@@ -205,29 +235,28 @@ def delete_profile_pic(db: Session = Depends(create_connection),
             summary="Likes or dislikes another profile",
             responses={404: {"description": "Profile not found"}})
 def like_dislike(like_dislike: Like_dislike,
-                    user: Users = Depends(auth.get_current_user),
-                    db: Session = Depends(create_connection)):
+                 user: Users = Depends(auth.get_current_user),
+                 db: Session = Depends(create_connection)):
     query = db.query(Users).filter(Users.id == like_dislike.profile_id).first()
     if query is None:
         raise HTTPException(
             status_code=HTTP_404_NOT_FOUND,
             detail="Profile was not found.",
         )
-    query = db.query(Likes_dislikes).filter(Likes_dislikes.follower == user.id, Likes_dislikes.followed_profile == like_dislike.profile_id)
+    query = db.query(Likes_dislikes).filter(Likes_dislikes.follower == user.id,
+                                            Likes_dislikes.followed_profile == like_dislike.profile_id)
     result = query.first()
     if result:
-        #it exists
+        # it exists
         if like_dislike.is_like is True or like_dislike.is_like is False:
             query.update({'is_like': like_dislike.is_like})
         else:
             db.delete(result)
         db.commit()
     else:
-        #need to create new relation
-        relation = Likes_dislikes(follower=user.id, followed_profile=like_dislike.profile_id, is_like=like_dislike.is_like)
+        # need to create new relation
+        relation = Likes_dislikes(follower=user.id, followed_profile=like_dislike.profile_id,
+                                  is_like=like_dislike.is_like)
         db.add(relation)
         db.commit()
         db.refresh(relation)
-
-
-
