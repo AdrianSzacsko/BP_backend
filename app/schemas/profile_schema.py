@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
+from app.schemas.farms_schema import GetFarms
 
 
 class Search_profile(BaseModel):
@@ -10,13 +11,6 @@ class Search_profile(BaseModel):
         orm_mode = True
 
 
-class Get_farms(BaseModel):
-    id: int
-    name: str
-    latitude: float
-    longitude: float
-
-
 class Get_Profile(BaseModel):
     id: int
     first_name: str
@@ -24,7 +18,7 @@ class Get_Profile(BaseModel):
     post_count: int
     like_count: int
     dislike_count: int
-    farms: Optional[list[Get_farms]]
+    farms: Optional[list[GetFarms]]
     is_like: Optional[bool]
     picture_path: Optional[str]
 

@@ -15,7 +15,8 @@ import io
 from app.db.database import create_connection
 from app.security import auth
 
-from app.schemas.profile_schema import Search_profile, Get_Profile, Get_farms, Like_dislike
+from app.schemas.profile_schema import Search_profile, Get_Profile, Like_dislike
+from app.schemas.farms_schema import GetFarms
 from app.miscFunctions.coordinates import check_coors
 from app.models import Farms, Users, Users_attributes, Likes_dislikes
 from sqlalchemy import func
@@ -66,7 +67,7 @@ def get_profile(profile_id: str,
                                                     Likes_dislikes.follower == user.id).first()
 
     profile = Get_Profile(**profile_query)
-    profile.farms = [Get_farms(**farm) for farm in farms_query]
+    profile.farms = [GetFarms(**farm) for farm in farms_query]
     if is_like_query is None:
         profile.is_like = None
     else:

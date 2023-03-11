@@ -4,8 +4,8 @@ from typing import Optional
 
 class PostFarm(BaseModel):
     name: str
-    lat: float
-    long: float
+    latitude: float
+    longitude: float
 
 
 class DeleteFarm(BaseModel):
@@ -15,8 +15,8 @@ class DeleteFarm(BaseModel):
 class GetFarms(BaseModel):
     id: int
     name: str
-    lat: float
-    long: float
+    latitude: float
+    longitude: float
 
     class Config:
         orm_mode = True
