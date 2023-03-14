@@ -44,7 +44,7 @@ def delete_farm(
         del_farm: DeleteFarm,
         user: Users = Depends(auth.get_current_user),
         db: Session = Depends(create_connection)):
-    farm = db.query(Farms).filter(Farms.user_id == user.id, Farms.name == del_farm.name).first()
+    farm = db.query(Farms).filter(Farms.user_id == user.id, Farms.id == del_farm.id).first()
     if farm:
         db.delete(farm)
         db.commit()

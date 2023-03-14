@@ -9,7 +9,7 @@ class PostFarm(BaseModel):
 
 
 class DeleteFarm(BaseModel):
-    name: str
+    id: int
 
 
 class GetFarms(BaseModel):

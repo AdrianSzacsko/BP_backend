@@ -57,6 +57,7 @@ def get_profile(profile_id: str,
                              Users_attributes.post_count,
                              Users_attributes.like_count,
                              Users_attributes.dislike_count,
+                             Users.photo.label("picture_path"),
                              ).filter(Users.id == profile_id).join(Users_attributes).first()
 
     farms_query = db.query(Farms.id,
@@ -182,6 +183,11 @@ def modify_profile_pic(file: UploadFile = File(...),
 
     letters = string.ascii_letters + string.digits
     path = ''.join(random.choice(letters) for _ in range(50)) + "." + file.content_type.split("/")[1]
+
+    # TODO check if path exists
+
+    if query_row.photo:
+        os.remove("Images/Profile/" + query_row.photo)
 
     with open("Images/Profile/" + path, "wb") as buffer:
         buffer.write(file_bytes)
