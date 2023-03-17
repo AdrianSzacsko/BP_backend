@@ -105,9 +105,16 @@ def get_post_pic(profile_id: int,
             detail=f"Profile picture was not found."
         )
     # image_type = magic.from_buffer(filter_query[0], mime=True)
-
-    with open("Images/Profile/" + result[0], "rb") as buffer:
-        image_bytes = buffer.read()
+    try:
+        with open("Images/Profile/" + result[0], "rb") as buffer:
+            image_bytes = buffer.read()
+    except FileNotFoundError:
+        db.query(Users).filter(Users.id == profile_id).update({"photo": None})
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Profile picture was not found."
+        )
 
     image_type = Image.open(io.BytesIO(image_bytes)).format.lower()
     return Response(content=bytes(image_bytes), media_type=f'image/{image_type}')
