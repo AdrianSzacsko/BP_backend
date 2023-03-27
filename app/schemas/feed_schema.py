@@ -6,20 +6,18 @@ from typing import Optional
 
 class GetFeed(BaseModel):
     distance_range: int
-    farm_id: int
+    latitude: float
+    longitude: float
 
     class Config:
         orm_mode = True
 
 
 class GetFeedResponse(BaseModel):
-    farm_lat: float
-    farm_lon: float
     id: int
     user_id: int
     first_name: str
     last_name: str
-    post_name: str
     latitude: float
     longitude: float
     category: str
@@ -31,12 +29,11 @@ class GetFeedResponse(BaseModel):
         orm_mode = True
 
 
-class GetFeedResponseProfile(BaseModel):
+"""class GetFeedResponseProfile(BaseModel):
     id: int
     user_id: int
     first_name: str
     last_name: str
-    post_name: str
     latitude: float
     longitude: float
     category: str
@@ -45,11 +42,10 @@ class GetFeedResponseProfile(BaseModel):
     photos_id: Optional[list[int]]
 
     class Config:
-        orm_mode = True
+        orm_mode = True"""
 
 
 class NewPost(BaseModel):
-    post_name: str
     latitude: float
     longitude: float
     category: str

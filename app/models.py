@@ -74,7 +74,6 @@ class Posts(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey(Users.id, ondelete='set null'))
-    post_name = Column(VARCHAR(100), nullable=False)
     latitude = Column(NUMERIC(17, 15), nullable=False)
     longitude = Column(NUMERIC(18, 15), nullable=False)
     category = Column(VARCHAR(50), nullable=False)

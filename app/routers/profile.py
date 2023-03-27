@@ -60,6 +60,12 @@ def get_profile(profile_id: str,
                              Users.photo.label("picture_path"),
                              ).filter(Users.id == profile_id).join(Users_attributes).first()
 
+    if profile_query is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Profile was not found."
+        )
+
     farms_query = db.query(Farms.id,
                            Farms.name,
                            Farms.latitude,
@@ -73,14 +79,14 @@ def get_profile(profile_id: str,
         profile.is_like = None
     else:
         profile.is_like = is_like_query.is_like
-
+    # TODO delete picture path, profile pic is based on ID
     return profile
 
 
 @router.get("/profile_pic/{profile_id}", status_code=HTTP_200_OK,
             summary="Retrieves a profile picture based on the id.",
             responses={404: {"description": "Post picture was not found."}})
-def get_post_pic(profile_id: int,
+def get_profile_pic(profile_id: int,
                  db: Session = Depends(create_connection),
                  user: Users = Depends(auth.get_current_user)):
     """

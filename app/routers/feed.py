@@ -14,7 +14,7 @@ import io
 from app.db.database import create_connection
 from app.security import auth
 
-from app.schemas.feed_schema import NewPost, GetFeed, GetFeedResponseProfile, GetFeedResponse
+from app.schemas.feed_schema import NewPost, GetFeed, GetFeedResponse
 from app.miscFunctions.coordinates import check_coors
 from app.models import Farms, Users, Users_attributes, Likes_dislikes, Post_photos
 from sqlalchemy import func, text, select
@@ -33,20 +33,41 @@ router = APIRouter(
             summary="Retrieves the available posts based on distance",
             responses={404: {"description": "String not found"}})
 def news_feed(distance_range: int,
-              farm_id: int,
+              latitude: float,
+              longitude: float,
               user: Users = Depends(auth.get_current_user),
               db: Session = Depends(create_connection)):
 
-    subquery_lat = db.query(Farms.latitude.label("farm_lat")).filter(Farms.id == farm_id).subquery()
-    subquery_lon = db.query(Farms.longitude.label("farm_lon")).filter(Farms.id == farm_id).subquery()
-    subquery1 = db.query(subquery_lon, subquery_lat, Posts).subquery()
-    query = db.query(subquery1.c.farm_lat,
+    #subquery_lat = db.query(Farms.latitude.label("farm_lat")).filter(Farms.id == farm_id).subquery()
+    #subquery_lon = db.query(Farms.longitude.label("farm_lon")).filter(Farms.id == farm_id).subquery()
+    #subquery1 = db.query(subquery_lon, subquery_lat, Posts).subquery()
+
+    query = db.query(Posts.id,
+                     Posts.user_id,
+                     Users.first_name,
+                     Users.last_name,
+                     Posts.latitude,
+                     Posts.longitude,
+                     Posts.category,
+                     Posts.text,
+                     Posts.date
+                     ).join(Users, Users.id == Posts.user_id).filter(
+        func.acos(
+            func.cos(func.radians(latitude)) *
+            func.cos(func.radians(Posts.latitude)) *
+            func.cos(func.radians(Posts.longitude) -
+                     func.radians(longitude)) +
+            func.sin(func.radians(latitude)) *
+            func.sin(func.radians(Posts.latitude))
+        ) * 6371 < distance_range
+    ).order_by(Posts.date).limit(100)
+
+    """query = db.query(subquery1.c.farm_lat,
                      subquery1.c.farm_lon,
                      subquery1.c.id,
                      subquery1.c.user_id,
                      Users.first_name,
                      Users.last_name,
-                     subquery1.c.post_name,
                      subquery1.c.latitude,
                      subquery1.c.longitude,
                      subquery1.c.category,
@@ -60,8 +81,8 @@ def news_feed(distance_range: int,
                      func.radians(subquery1.c.farm_lon)) +
             func.sin(func.radians(subquery1.c.farm_lat)) *
             func.sin(func.radians(subquery1.c.latitude))
-        ) * 6371 < distance_range
-    ).order_by(subquery1.c.date).limit(100)
+        ) * 6371 < feed.distance_range
+    ).order_by(subquery1.c.date).limit(100)"""
 
     result = query.all()
     if not result:
@@ -79,7 +100,6 @@ def news_feed(distance_range: int,
         post_list.append(curr_post)
 
     return post_list
-
 
 
 @router.get("/post_pic/{post_pic}", status_code=HTTP_200_OK,
@@ -110,8 +130,16 @@ def get_post_pic(post_pic: int,
             detail=f"Post picture was not found."
         )
 
-    with open("Images/Feed/" + result[0], "rb") as buffer:
-        image_bytes = buffer.read()
+    try:
+        with open("Images/Feed/" + result[0], "rb") as buffer:
+            image_bytes = buffer.read()
+    except FileNotFoundError:
+        db.query(Post_photos).filter(Post_photos.id == post_pic).delete()
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Post picture was not found."
+        )
 
     # image_type = magic.from_buffer(filter_query[0], mime=True)
     image_type = Image.open(io.BytesIO(image_bytes)).format.lower()
@@ -119,7 +147,7 @@ def get_post_pic(post_pic: int,
 
 
 @router.get("/{profile_id}", status_code=HTTP_200_OK,
-            response_model=list[GetFeedResponseProfile],
+            response_model=list[GetFeedResponse],
             summary="Retrieves the available posts for a user profile",
             responses={404: {"description": "String not found"}})
 def profile_news_feed(profile_id: int,
@@ -136,7 +164,6 @@ def profile_news_feed(profile_id: int,
                       calc.user_id,
                       Users.first_name,
                       Users.last_name,
-                      calc.post_name,
                       calc.latitude,
                       calc.longitude,
                       calc.category,
@@ -150,7 +177,7 @@ def profile_news_feed(profile_id: int,
 
     post_list = []
     for post in result:
-        curr_post = GetFeedResponseProfile(**post)
+        curr_post = GetFeedResponse(**post)
         photo_result = db.query(Post_photos.id).filter(
             Post_photos.post_id == curr_post.id).order_by(
             Post_photos.id).all()
@@ -167,7 +194,6 @@ def new_post(post: NewPost,
              user: Users = Depends(auth.get_current_user),
              db: Session = Depends(create_connection)):
     post = Posts(user_id=user.id,
-                 post_name=post.post_name,
                  latitude=post.latitude,
                  longitude=post.longitude,
                  category=post.category,
@@ -180,7 +206,7 @@ def new_post(post: NewPost,
     return {"post_id": post.id}
 
 
-@router.post("/new_post_photos", status_code=HTTP_200_OK,
+@router.post("/new_post_photos/{post_id}", status_code=HTTP_200_OK,
              summary="Add new post photos for a post",
              responses={404: {"description": "String not found"}})
 def new_post_photos(post_id: int,
@@ -194,6 +220,7 @@ def new_post_photos(post_id: int,
             detail="Profile or Post was not found",
         )
     photos = []
+
     for photo in files:
         bytes = check_if_picture(photo)
 
