@@ -17,7 +17,7 @@ from app.security import auth
 from app.schemas.feed_schema import NewPost, GetFeed, GetFeedResponse
 from app.miscFunctions.coordinates import check_coors
 from app.models import Farms, Users, Users_attributes, Likes_dislikes, Post_photos
-from sqlalchemy import func, text, select
+from sqlalchemy import func, text, select, desc
 from app.routers.profile import check_if_picture
 import datetime
 from PIL import Image
@@ -60,7 +60,7 @@ def news_feed(distance_range: int,
             func.sin(func.radians(latitude)) *
             func.sin(func.radians(Posts.latitude))
         ) * 6371 < distance_range
-    ).order_by(Posts.date).limit(100)
+    ).order_by(desc(Posts.date)).limit(100)
 
     """query = db.query(subquery1.c.farm_lat,
                      subquery1.c.farm_lon,
@@ -201,8 +201,14 @@ def new_post(post: NewPost,
                  date=datetime.datetime.now())
 
     db.add(post)
+
+    attributes = db.query(Users_attributes).filter(Users_attributes.user_id == user.id)
+    values = attributes.first()
+    attributes.update({"post_count": values.post_count + 1})
+
     db.commit()
     db.refresh(post)
+
     return {"post_id": post.id}
 
 
