@@ -146,7 +146,7 @@ def get_post_pic(post_pic: int,
     return Response(content=bytes(image_bytes), media_type=f'image/{image_type}')
 
 
-@router.get("/{profile_id}", status_code=HTTP_200_OK,
+@router.get("/profile_feed/{profile_id}", status_code=HTTP_200_OK,
             response_model=list[GetFeedResponse],
             summary="Retrieves the available posts for a user profile",
             responses={404: {"description": "String not found"}})

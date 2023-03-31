@@ -4,7 +4,8 @@ from app.schemas.farms_schema import GetFarms
 
 
 class Search_profile(BaseModel):
-    name: str
+    first_name: str
+    last_name: str
     id: int
 
     class Config:

@@ -35,7 +35,8 @@ router = APIRouter(
 def search_profiles(string: str,
                     user: Users = Depends(auth.get_current_user),
                     db: Session = Depends(create_connection)):
-    query = db.query(func.concat(Users.first_name, ' ', Users.last_name).label("name"),
+    query = db.query(Users.first_name,
+                     Users.last_name,
                      Users.id)
     results = query.filter(
         func.lower(func.concat(func.lower(Users.first_name), ' ', func.lower(Users.last_name))).like(
