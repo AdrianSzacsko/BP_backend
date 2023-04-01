@@ -8,7 +8,7 @@ from app.schemas.auth_schema import Token
 from .db.database import create_connection
 from .models import Users
 
-from .routers import login, register, weather, farms, profile, feed
+from .routers import login, register, weather, farms, profile, feed, settings
 from .periodic_check import weather as PeriodicWeather
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,7 +44,7 @@ app.include_router(weather.router)
 app.include_router(farms.router)
 app.include_router(profile.router)
 app.include_router(feed.router)
-
+app.include_router(settings.router)
 
 @app.get("/")
 async def root():
