@@ -29,22 +29,6 @@ class GetFeedResponse(BaseModel):
         orm_mode = True
 
 
-"""class GetFeedResponseProfile(BaseModel):
-    id: int
-    user_id: int
-    first_name: str
-    last_name: str
-    latitude: float
-    longitude: float
-    category: str
-    text: str
-    date: datetime.datetime
-    photos_id: Optional[list[int]]
-
-    class Config:
-        orm_mode = True"""
-
-
 class NewPost(BaseModel):
     latitude: float
     longitude: float

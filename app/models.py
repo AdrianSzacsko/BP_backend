@@ -1,4 +1,6 @@
-from sqlalchemy import Column, Integer, Boolean, ForeignKey, text, CheckConstraint, NUMERIC
+import enum
+
+from sqlalchemy import Column, Integer, Boolean, ForeignKey, text, CheckConstraint, NUMERIC, Enum
 from sqlalchemy.dialects.postgresql import BYTEA
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql.sqltypes import TIMESTAMP, VARCHAR, TEXT
@@ -24,7 +26,6 @@ class Users_attributes(Base):
     id = Column(Integer, primary_key=True, nullable=False)
     post_count = Column(Integer, CheckConstraint("post_count >= 0"), nullable=False, default=0)
     like_count = Column(Integer, CheckConstraint("like_count >= 0"), nullable=False, default=0)
-    dislike_count = Column(Integer, CheckConstraint("dislike_count >= 0"), nullable=False, default=0)
     user_id = Column(Integer, ForeignKey(Users.id, ondelete='CASCADE'))
     #user = relationship('users', )
 
@@ -59,14 +60,21 @@ class Farms(Base):
     CheckConstraint('longitude <= 180 and longitude >= -180', name='longitude_check'),
 
 
-class Likes_dislikes(Base):
+"""class Likes_dislikes(Base):
     __tablename__ = 'likes_dislikes'
 
     follower = Column(Integer, ForeignKey(Users.id, ondelete='cascade'), primary_key=True)
     followed_profile = Column(Integer, ForeignKey(Users.id, ondelete='cascade'), primary_key=True)
     is_like = Column(Boolean, nullable=False)
     #follower_user = relationship("Users", foreign_keys=[follower])
-    #followed_user = relationship("Users", foreign_keys=[followed_profile])
+    #followed_user = relationship("Users", foreign_keys=[followed_profile])"""
+
+
+class Interactions(Base):
+    __tablename__ = 'interactions'
+
+    follower = Column(Integer, ForeignKey(Users.id, ondelete='cascade'), primary_key=True)
+    followed_profile = Column(Integer, ForeignKey(Users.id, ondelete='cascade'), primary_key=True)
 
 
 class Posts(Base):

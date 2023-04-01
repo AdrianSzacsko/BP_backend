@@ -16,7 +16,7 @@ from app.security import auth
 
 from app.schemas.feed_schema import NewPost, GetFeed, GetFeedResponse
 from app.miscFunctions.coordinates import check_coors
-from app.models import Farms, Users, Users_attributes, Likes_dislikes, Post_photos
+from app.models import Farms, Users, Users_attributes, Post_photos, Interactions
 from sqlalchemy import func, text, select, desc
 from app.routers.profile import check_if_picture
 import datetime

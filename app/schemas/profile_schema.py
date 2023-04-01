@@ -18,15 +18,14 @@ class Get_Profile(BaseModel):
     last_name: str
     post_count: int
     like_count: int
-    dislike_count: int
     farms: Optional[list[GetFarms]]
-    is_like: Optional[bool]
+    interaction: Optional[bool]
     picture_path: Optional[str]
 
 
 class Like_dislike(BaseModel):
     profile_id: int
-    is_like: Optional[bool]
+    interaction: Optional[bool]
 
     class Config:
         orm_mode = True

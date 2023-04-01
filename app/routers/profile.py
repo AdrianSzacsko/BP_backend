@@ -18,7 +18,7 @@ from app.security import auth
 from app.schemas.profile_schema import Search_profile, Get_Profile, Like_dislike
 from app.schemas.farms_schema import GetFarms
 from app.miscFunctions.coordinates import check_coors
-from app.models import Farms, Users, Users_attributes, Likes_dislikes
+from app.models import Farms, Users, Users_attributes, Interactions
 from sqlalchemy import func
 from PIL import Image
 
@@ -57,7 +57,6 @@ def get_profile(profile_id: str,
                              Users.last_name,
                              Users_attributes.post_count,
                              Users_attributes.like_count,
-                             Users_attributes.dislike_count,
                              Users.photo.label("picture_path"),
                              ).filter(Users.id == profile_id).join(Users_attributes).first()
 
@@ -71,15 +70,15 @@ def get_profile(profile_id: str,
                            Farms.name,
                            Farms.latitude,
                            Farms.longitude).filter(Farms.user_id == profile_id).all()
-    is_like_query = db.query(Likes_dislikes).filter(Likes_dislikes.followed_profile == profile_id,
-                                                    Likes_dislikes.follower == user.id).first()
+    interaction = db.query(Interactions).filter(Interactions.followed_profile == profile_id,
+                                                Interactions.follower == user.id).first()
 
     profile = Get_Profile(**profile_query)
     profile.farms = [GetFarms(**farm) for farm in farms_query]
-    if is_like_query is None:
-        profile.is_like = None
+    if interaction is None:
+        profile.interaction = False
     else:
-        profile.is_like = is_like_query.is_like
+        profile.interaction = True
     # TODO delete picture path, profile pic is based on ID
     return profile
 
@@ -88,8 +87,8 @@ def get_profile(profile_id: str,
             summary="Retrieves a profile picture based on the id.",
             responses={404: {"description": "Post picture was not found."}})
 def get_profile_pic(profile_id: int,
-                 db: Session = Depends(create_connection),
-                 user: Users = Depends(auth.get_current_user)):
+                    db: Session = Depends(create_connection),
+                    user: Users = Depends(auth.get_current_user)):
     """
         Input parameters:
         - **profile_id**: id of the user
@@ -139,16 +138,11 @@ def delete_profile(user: Users = Depends(auth.get_current_user),
     if query:
 
         # likes and dislikes should be corrected
-        followed_profiles = db.query(Likes_dislikes).filter(Likes_dislikes.follower == user.id).all()
+        followed_profiles = db.query(Interactions).filter(Interactions.follower == user.id).all()
         for followed_profile in followed_profiles:
-            if followed_profile.is_like:
-                profile = db.query(Users_attributes).filter(
-                    Users_attributes.user_id == followed_profile.followed_profile)
-                profile.update({'like_count': profile.first().like_count - 1})
-            elif followed_profile.is_like is False:
-                profile = db.query(Users_attributes).filter(
-                    Users_attributes.user_id == followed_profile.followed_profile)
-                profile.update({'dislike_count': profile.first().dislike_count - 1})
+            profile = db.query(Users_attributes).filter(
+                Users_attributes.user_id == followed_profile.followed_profile)
+            profile.update({'like_count': profile.first().like_count - 1})
             db.commit()
 
         db.delete(query)
@@ -264,20 +258,21 @@ def like_dislike(like_dislike: Like_dislike,
             status_code=HTTP_404_NOT_FOUND,
             detail="Profile was not found.",
         )
-    query = db.query(Likes_dislikes).filter(Likes_dislikes.follower == user.id,
-                                            Likes_dislikes.followed_profile == like_dislike.profile_id)
+    query = db.query(Interactions).filter(Interactions.follower == user.id,
+                                          Interactions.followed_profile == like_dislike.profile_id)
     result = query.first()
-    if result:
+    attributes = db.query(Users_attributes).filter(Users_attributes.user_id == like_dislike.profile_id)
+    attr_value = attributes.first()
+    if result and like_dislike.interaction is False:
         # it exists
-        if like_dislike.is_like is True or like_dislike.is_like is False:
-            query.update({'is_like': like_dislike.is_like})
-        else:
-            db.delete(result)
+        attributes.update({'like_count': attr_value.like_count - 1})
+
+        db.delete(result)
         db.commit()
-    else:
+    elif not result and like_dislike.interaction is True:
         # need to create new relation
-        relation = Likes_dislikes(follower=user.id, followed_profile=like_dislike.profile_id,
-                                  is_like=like_dislike.is_like)
+        relation = Interactions(follower=user.id, followed_profile=like_dislike.profile_id)
+        attributes.update({'like_count': attr_value.like_count + 1})
         db.add(relation)
         db.commit()
         db.refresh(relation)
