@@ -5,8 +5,8 @@ from fastapi import APIRouter, HTTPException, status, Depends, UploadFile, File
 from sqlalchemy.orm import Session, aliased
 from starlette.responses import StreamingResponse, Response
 
-from app.models import Users, Posts
-from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY
+from app.models import Users, Posts, Settings
+from starlette.status import HTTP_200_OK, HTTP_404_NOT_FOUND, HTTP_422_UNPROCESSABLE_ENTITY, HTTP_405_METHOD_NOT_ALLOWED
 from typing import List, Optional
 
 import io
@@ -21,6 +21,7 @@ from sqlalchemy import func, text, select, desc
 from app.routers.profile import check_if_picture
 import datetime
 from PIL import Image
+from firebase_admin import messaging
 
 router = APIRouter(
     prefix="/feed",
@@ -264,3 +265,38 @@ def delete_post(post_id: int,
     db.delete(validation)
     db.commit()
     return
+
+
+@router.get("/notifications/{user_id}",  status_code=HTTP_200_OK,
+             summary="Try the notification through firebase",
+             responses={403: {"description": "Incorrect credentials."}})
+def try_notification(user_id: int,
+           user: Users = Depends(auth.get_current_user),
+           db: Session = Depends(create_connection)):
+
+    query = db.query(Settings).filter(Settings.user_id == user_id).first()
+    if not query:
+        raise HTTPException(
+            status_code=HTTP_404_NOT_FOUND,
+            detail="Profile was not found",
+        )
+    if query.fcm_token and query.news_notifications:
+        message = messaging.Message(
+            data={
+                'title': 'User defined Notification',
+                'body': 'This is a user defined notification to try out how the notifications work',
+            },
+            token=query.fcm_token,
+        )
+
+        # Send a message to the device corresponding to the provided
+        # registration token.
+        response = messaging.send(message)
+        # Response is a message ID string.
+        return {'Firebase response:': response}
+    else:
+        raise HTTPException(
+            status_code=HTTP_405_METHOD_NOT_ALLOWED,
+            detail="The user has not allowed notifications or token is missing",
+        )
+

@@ -45,6 +45,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(),
             detail="Incorrect username or password."
         )
 
+
     if not verify_password(form_data.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -60,3 +61,6 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(),
         data={"user_id": user.id}, expires_delta=refresh_token_expires
     )
     return {"access_token": access_token, "refresh_token": refresh_token, "token_type": "bearer"}
+
+
+

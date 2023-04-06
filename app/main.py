@@ -15,7 +15,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.periodic_check.weather import update_weather_db
 
 # SOURCE: https://fastapi.tiangolo.com/tutorial/metadata/
+import firebase_admin
+from firebase_admin import credentials
 
+cred = credentials.Certificate('firebase_cred.json')
+firebase_admin.initialize_app(cred)
 
 app = FastAPI()
 tasks = BackgroundTasks()

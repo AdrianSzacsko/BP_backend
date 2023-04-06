@@ -8,3 +8,7 @@ class Notifications(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class FCMToken(BaseModel):
+    fcm_token: str
