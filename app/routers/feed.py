@@ -206,9 +206,13 @@ def new_post(post: NewPost,
     attributes = db.query(Users_attributes).filter(Users_attributes.user_id == user.id)
     values = attributes.first()
     attributes.update({"post_count": values.post_count + 1})
-
     db.commit()
     db.refresh(post)
+
+    # create msg
+    title = "New post"
+    body = f"{user.first_name}  {user.last_name} has posted about {post.category}, Check it out!"
+    create_and_send_multicast(db, user, title, body)
 
     return {"post_id": post.id}
 
@@ -300,3 +304,37 @@ def try_notification(user_id: int,
             detail="The user has not allowed notifications or token is missing",
         )
 
+
+# handle messaging
+def create_and_send_multicast(db, user, title, body):
+    followers = db.query(Interactions).filter(Interactions.followed_profile == user.id) \
+        .join(Settings, Interactions.follower == Settings.user_id).all()
+    tokens = check_tokens(followers)
+    send_multicast(tokens, title, body)
+
+
+def check_tokens(users_settings):
+    tokens = []
+    for user_settings in users_settings:
+        if user_settings.fcm_token and user_settings.news_notifications:
+            tokens.append(user_settings.fcm_token)
+    return tokens
+
+
+def send_multicast(registration_tokens, title, body):
+    message = messaging.MulticastMessage(
+        data={
+            'title': title,
+            'body': body,
+        },
+        tokens=registration_tokens,
+    )
+    response = messaging.send_multicast(message)
+    if response.failure_count > 0:
+        responses = response.responses
+        failed_tokens = []
+        for idx, resp in enumerate(responses):
+            if not resp.success:
+                # The order of responses corresponds to the order of the registration tokens.
+                failed_tokens.append(registration_tokens[idx])
+        print('List of tokens that caused failures: {0}'.format(failed_tokens))
