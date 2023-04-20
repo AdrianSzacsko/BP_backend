@@ -275,7 +275,6 @@ def delete_post(post_id: int,
              summary="Try the notification through firebase",
              responses={403: {"description": "Incorrect credentials."}})
 def try_notification(user_id: int,
-           user: Users = Depends(auth.get_current_user),
            db: Session = Depends(create_connection)):
 
     query = db.query(Settings).filter(Settings.user_id == user_id).first()
@@ -286,10 +285,10 @@ def try_notification(user_id: int,
         )
     if query.fcm_token and query.news_notifications:
         message = messaging.Message(
-            data={
-                'title': 'User defined Notification',
-                'body': 'This is a user defined notification to try out how the notifications work',
-            },
+            notification=messaging.Notification(
+                title='User defined Notification',
+                body='This is a user defined notification to try out how the notifications work',
+            ),
             token=query.fcm_token,
         )
 
@@ -307,7 +306,7 @@ def try_notification(user_id: int,
 
 # handle messaging
 def create_and_send_multicast(db, user, title, body):
-    followers = db.query(Interactions).filter(Interactions.followed_profile == user.id) \
+    followers = db.query(Interactions, Settings.fcm_token, Settings.news_notifications).filter(Interactions.followed_profile == user.id)\
         .join(Settings, Interactions.follower == Settings.user_id).all()
     tokens = check_tokens(followers)
     send_multicast(tokens, title, body)
@@ -323,10 +322,10 @@ def check_tokens(users_settings):
 
 def send_multicast(registration_tokens, title, body):
     message = messaging.MulticastMessage(
-        data={
-            'title': title,
-            'body': body,
-        },
+        notification=messaging.Notification(
+            title=title,
+            body=body,
+        ),
         tokens=registration_tokens,
     )
     response = messaging.send_multicast(message)
