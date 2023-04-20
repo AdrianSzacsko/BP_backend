@@ -165,7 +165,7 @@ def check_if_picture(file: UploadFile = File(...)):
         )
     file_bytes = file.file.read()
     size = len(file_bytes)
-    if size > 3 * 1024 * 1024:  # 3MB = 3*1024 KB = 3* 1024 * 1024
+    if size > 10 * 1024 * 1024:  # 3MB = 3*1024 KB = 3* 1024 * 1024
         raise HTTPException(
             status_code=HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Selected file is too large.",
