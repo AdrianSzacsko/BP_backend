@@ -186,9 +186,6 @@ def get_hourly_weather(lat: float,
     return create_dict_hourly_weather(lat, long)
 
 
-from app.periodic_check.weather import update_weather_db
-
-
 @router.get("/daily/{lat}/{long}", response_model=DailyResponse, status_code=HTTP_200_OK,
             summary="Retrieves daily weather for a given location.",
             responses={404: {"description": "Location not found"}})
@@ -197,16 +194,6 @@ def get_daily_weather(lat: float,
                        #user: Users = Depends(auth.get_current_user),
                        db: Session = Depends(create_connection)):
     return create_dict_daily_weather(lat, long)
-
-
-from app.periodic_check.weather import update_weather_db
-
-
-@router.put("/test_periodic", status_code=HTTP_200_OK,
-            summary="Test function for periodic weather updates",
-            responses={404: {"description": "Location not found"}})
-def get_hourly_weather(db: Session = Depends(create_connection)):
-    update_weather_db(db)
 
 
 @router.get("/search/{string}", response_model=list[SearchResponse], status_code=HTTP_200_OK,

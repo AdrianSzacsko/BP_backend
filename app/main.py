@@ -9,10 +9,10 @@ from .db.database import create_connection
 from .models import Users
 
 from .routers import login, register, weather, farms, profile, feed, settings
-from .periodic_check import weather as PeriodicWeather
+
 
 from fastapi.middleware.cors import CORSMiddleware
-from app.periodic_check.weather import update_weather_db
+
 
 # SOURCE: https://fastapi.tiangolo.com/tutorial/metadata/
 import firebase_admin

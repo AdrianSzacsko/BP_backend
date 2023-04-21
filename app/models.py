@@ -30,7 +30,7 @@ class Users_attributes(Base):
     #user = relationship('users', )
 
 
-class Weather(Base):
+"""class Weather(Base):
     __tablename__ = "weather"
 
     id = Column(Integer, primary_key=True)
@@ -43,7 +43,7 @@ class Weather(Base):
     sys_sunrise = Column(Integer)
     current = relationship('Weather_current', backref='weather')
     hourly = relationship('Weather_hourly', backref='weather')
-    farms = relationship('Farms', backref='weather')
+    farms = relationship('Farms', backref='weather')"""
 
 
 class Farms(Base):
@@ -51,7 +51,7 @@ class Farms(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey(Users.id, ondelete='cascade'))
-    weather_id = Column(Integer, ForeignKey(Weather.id, ondelete='set null'))
+    # weather_id = Column(Integer, ForeignKey(Weather.id, ondelete='set null'))
     name = Column(VARCHAR(50), nullable=False)
     latitude = Column(NUMERIC(17, 15), nullable=False)
     longitude = Column(NUMERIC(18, 15), nullable=False)
@@ -93,14 +93,14 @@ class Posts(Base):
     post_photos = relationship('Post_photos', back_populates='post')
 
 
-class Comments(Base):
+"""class Comments(Base):
     __tablename__ = 'comments'
 
     id = Column(Integer, primary_key=True)
     post_id = Column(Integer, ForeignKey(Posts.id, ondelete='cascade'))
     text = Column(TEXT, default='')
     date = Column(TIMESTAMP(timezone=False), default='now()')
-    #post = relationship("Posts", back_populates="comments")
+    #post = relationship("Posts", back_populates="comments")"""
 
 
 class Post_photos(Base):
@@ -127,7 +127,7 @@ class Settings(Base):
 #weather
 
 
-class Weather_variables(Base):
+"""class Weather_variables(Base):
     __tablename__ = "weather_variables"
 
     id = Column(Integer, primary_key=True)
@@ -166,4 +166,4 @@ class Weather_hourly(Base):
     weather_id = Column(Integer, ForeignKey(Weather.id, ondelete='cascade'), primary_key=True)
     variables_id = Column(Integer, ForeignKey(Weather_variables.id, ondelete='cascade'), primary_key=True)
     hour = Column(Integer)
-    refresh_time = Column(TIMESTAMP(timezone=False))
+    refresh_time = Column(TIMESTAMP(timezone=False))"""
