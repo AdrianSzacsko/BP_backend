@@ -35,7 +35,7 @@ def set_notifications(notifications: Notifications,
             response_model=Notifications,
             summary="Set the notifications for the currently logged in user",
             responses={404: {"description": "User not found"}})
-def set_notifications(user: Users = Depends(auth.get_current_user),
+def get_notifications(user: Users = Depends(auth.get_current_user),
                       db: Session = Depends(create_connection)):
     query = db.query(Settings).filter(Settings.user_id == user.id).first()
     return query

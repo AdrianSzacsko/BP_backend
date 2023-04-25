@@ -3,7 +3,6 @@ from typing import Optional
 
 
 class Notifications(BaseModel):
-    weather_notifications: bool
     news_notifications: bool
 
     class Config:

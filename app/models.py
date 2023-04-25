@@ -117,9 +117,9 @@ class Settings(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey(Users.id, ondelete='cascade'))
-    min_temp = Column(Integer)
-    max_temp = Column(Integer)
-    weather_notifications = Column(Boolean, default=True)
+    #min_temp = Column(Integer)
+    #max_temp = Column(Integer)
+    #weather_notifications = Column(Boolean, default=True)
     news_notifications = Column(Boolean, default=True)
     fcm_token = Column(VARCHAR(255))
     #user = relationship("Users")

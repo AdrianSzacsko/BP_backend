@@ -41,10 +41,10 @@ def add_farm(post_farm: PostFarm,
                summary="Creates new farm",
                responses={404: {"description": "Location not found"}})
 def delete_farm(
-        del_farm: DeleteFarm,
+        del_farm: int,
         user: Users = Depends(auth.get_current_user),
         db: Session = Depends(create_connection)):
-    farm = db.query(Farms).filter(Farms.user_id == user.id, Farms.id == del_farm.id).first()
+    farm = db.query(Farms).filter(Farms.user_id == user.id, Farms.id == del_farm).first()
     if farm:
         db.delete(farm)
         db.commit()
