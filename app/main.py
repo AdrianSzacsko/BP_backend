@@ -2,6 +2,8 @@ import asyncio
 
 import socketio as socketio
 from fastapi import FastAPI, Depends, BackgroundTasks
+from fastapi_amis_admin.admin.settings import Settings
+from fastapi_amis_admin.admin.site import AdminSite
 from sqlalchemy.orm import Session
 
 from app.schemas.auth_schema import Token
@@ -18,11 +20,15 @@ from fastapi.middleware.cors import CORSMiddleware
 import firebase_admin
 from firebase_admin import credentials
 
+from fastapi_scheduler import SchedulerAdmin
+
+from .routers.weather import get_alert
+
 cred = credentials.Certificate('firebase_cred.json')
 firebase_admin.initialize_app(cred)
 
 app = FastAPI()
-tasks = BackgroundTasks()
+#tasks = BackgroundTasks()
 
 
 #@app.on_event("startup")
@@ -54,8 +60,23 @@ app.include_router(settings.router)
 async def root():
     return {"message": "BP project by Adrian Szacsko"}
 
+from tzlocal import get_localzone
 
-from app.security.deps import get_current_user
+site = AdminSite(settings=Settings(database_url_async='sqlite+aiosqlite:///amisadmin.db'))
+scheduler = SchedulerAdmin.bind(site)
+scheduler.timezone = get_localzone()
+
+
+@scheduler.scheduled_job('cron', hour=12, minute=20,)
+def interval_task():
+    # print("Interval task running...")
+    get_alert()
+
+
+@app.on_event("startup")
+async def startup():
+    site.mount_app(app)
+    scheduler.start()
 
 
 """@app.get('/me', summary='Get details of currently logged in user', response_model=Token)

@@ -212,7 +212,7 @@ def new_post(post: NewPost,
     # create msg
     title = "New post"
     body = f"{user.first_name}  {user.last_name} has posted about {post.category}, Check it out!"
-    create_and_send_multicast(db, user, title, body)
+    create_and_send_multicast_news(db, user, title, body)
 
     return {"post_id": post.id}
 
@@ -305,7 +305,7 @@ def try_notification(user_id: int,
 
 
 # handle messaging
-def create_and_send_multicast(db, user, title, body):
+def create_and_send_multicast_news(db, user, title, body):
     followers = db.query(Interactions, Settings.fcm_token, Settings.news_notifications).filter(Interactions.followed_profile == user.id)\
         .join(Settings, Interactions.follower == Settings.user_id).all()
     tokens = check_tokens(followers)

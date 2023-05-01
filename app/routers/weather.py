@@ -1,12 +1,15 @@
 from enum import Enum
 
 from fastapi import APIRouter, HTTPException, status, Depends
-from sqlalchemy.orm import Session
-from app.models import Users
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.db import init_db
+from app.models import Users, Farms, Settings
 from starlette.status import HTTP_200_OK
 from typing import List, Optional
 
 from app.db.database import create_connection
+from app.routers.feed import check_tokens, send_multicast
 from app.security import auth
 
 from app.schemas.weather_schema import CurrentResponse, HourlyResponse, WeatherVariables, WeatherPydantic, \
@@ -166,12 +169,13 @@ def get_Nominatim(search_string: str):
     except requests.exceptions.RequestException as err:
         raise HTTPException(status_code=500, detail="Something went wrong")
 
+
 @router.get("/curr/{lat}/{long}", response_model=CurrentResponse, status_code=HTTP_200_OK,
             summary="Retrieves current weather for a given location.",
             responses={404: {"description": "Location not found"}})
 def get_curr_weather(lat: float,
                      long: float,
-                     #user: Users = Depends(auth.get_current_user),
+                     # user: Users = Depends(auth.get_current_user),
                      db: Session = Depends(create_connection)):
     return create_dict_curr_weather(lat, long)
 
@@ -181,7 +185,7 @@ def get_curr_weather(lat: float,
             responses={404: {"description": "Location not found"}})
 def get_hourly_weather(lat: float,
                        long: float,
-                       #user: Users = Depends(auth.get_current_user),
+                       # user: Users = Depends(auth.get_current_user),
                        db: Session = Depends(create_connection)):
     return create_dict_hourly_weather(lat, long)
 
@@ -190,9 +194,9 @@ def get_hourly_weather(lat: float,
             summary="Retrieves daily weather for a given location.",
             responses={404: {"description": "Location not found"}})
 def get_daily_weather(lat: float,
-                       long: float,
-                       #user: Users = Depends(auth.get_current_user),
-                       db: Session = Depends(create_connection)):
+                      long: float,
+                      # user: Users = Depends(auth.get_current_user),
+                      db: Session = Depends(create_connection)):
     return create_dict_daily_weather(lat, long)
 
 
@@ -200,7 +204,7 @@ def get_daily_weather(lat: float,
             summary="Retrieves the location from text search",
             responses={404: {"description": "Location not found"}})
 def get_search_location(string: str,
-                       db: Session = Depends(create_connection)):
+                        db: Session = Depends(create_connection)):
     data = get_Nominatim(string)
     result = []
     for item in data:
@@ -208,9 +212,34 @@ def get_search_location(string: str,
         for key in SearchResponse.__fields__.keys():
             result[len(result) - 1][key] = item.get(key, None)
         # check for duplicate
-        for dictionary in result[:len(result)-1]:
+        for dictionary in result[:len(result) - 1]:
             if result[len(result) - 1]['type'] == dictionary['type'] \
                     and result[len(result) - 1]['display_name'] == dictionary['display_name']:
                 result.pop(len(result) - 1)
                 break
     return result
+
+
+"""@router.get("/alert", status_code=HTTP_200_OK,
+            summary="Generates a weather alert")
+def get_search_location(db: Session = Depends(create_connection)):"""
+
+
+def get_alert():
+    SessionLocal = sessionmaker(autocommit=False, bind=init_db.engine)
+    db = SessionLocal()
+    try:
+        coordinates_set = set()
+        query = db.query(Farms.latitude, Farms.longitude, Settings.fcm_token, Settings.news_notifications) \
+            .join(Settings, Settings.user_id == Farms.user_id).all()
+        for result in query:
+            if result.fcm_token and result.news_notifications:
+                weather_forecast = create_dict_daily_weather(result.latitude, result.longitude)
+                title = "Tomorrow in " + weather_forecast['weather']['name'] + " : " + \
+                        weather_forecast['variables'][1]['weather_description'].capitalize()
+                body = "Temperature will be " + str(weather_forecast['variables'][1]['temp_day']) + "°C" + "\n" + \
+                       "At night will be " + str(weather_forecast['variables'][1]['temp_night']) + "°C"
+                send_multicast([result.fcm_token], title, body)
+            continue
+    finally:
+        db.close()
