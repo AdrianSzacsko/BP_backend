@@ -25,14 +25,15 @@ from firebase_admin import messaging
 
 router = APIRouter(
     prefix="/feed",
-    tags=["Feed"]
+    tags=["Feed"],
+    responses={401: {"description": "Not authorized to perform this action."}}
 )
 
 
 @router.get("/", status_code=HTTP_200_OK,
             response_model=list[GetFeedResponse],
             summary="Retrieves the available posts based on distance",
-            responses={404: {"description": "String not found"}})
+            responses={404: {"description": "Feed is empty"}})
 def news_feed(distance_range: int,
               latitude: float,
               longitude: float,
@@ -150,7 +151,7 @@ def get_post_pic(post_pic: int,
 @router.get("/profile_feed/{profile_id}", status_code=HTTP_200_OK,
             response_model=list[GetFeedResponse],
             summary="Retrieves the available posts for a user profile",
-            responses={404: {"description": "String not found"}})
+            responses={404: {"description": "Profile not found"}})
 def profile_news_feed(profile_id: int,
                       user: Users = Depends(auth.get_current_user),
                       db: Session = Depends(create_connection)):
@@ -189,8 +190,7 @@ def profile_news_feed(profile_id: int,
 
 
 @router.post("/new_post", status_code=HTTP_200_OK,
-             summary="Creates a new post for the current user",
-             responses={404: {"description": "String not found"}})
+             summary="Creates a new post for the current user")
 def new_post(post: NewPost,
              user: Users = Depends(auth.get_current_user),
              db: Session = Depends(create_connection)):
@@ -218,8 +218,7 @@ def new_post(post: NewPost,
 
 
 @router.post("/new_post_photos/{post_id}", status_code=HTTP_200_OK,
-             summary="Add new post photos for a post",
-             responses={404: {"description": "String not found"}})
+             summary="Add new post photos for a post")
 def new_post_photos(post_id: int,
              files: list[UploadFile],
              user: Users = Depends(auth.get_current_user),
@@ -250,7 +249,7 @@ def new_post_photos(post_id: int,
 
 @router.delete("/{post_id}", status_code=HTTP_200_OK,
              summary="Deletes a post for the current user",
-             responses={404: {"description": "String not found"}})
+             responses={404: {"description": "Profile or post not found"}})
 def delete_post(post_id: int,
              user: Users = Depends(auth.get_current_user),
              db: Session = Depends(create_connection)):
@@ -273,7 +272,8 @@ def delete_post(post_id: int,
 
 @router.get("/notifications/{profile_id}",  status_code=HTTP_200_OK,
              summary="Try the notification through firebase",
-             responses={403: {"description": "Incorrect credentials"}})
+             responses={404: {"description": "Profile not found"},
+                        405: {"description": "The user has not allowed notifications or token is missing"}})
 def try_notification(profile_id: int,
            db: Session = Depends(create_connection)):
 

@@ -13,7 +13,8 @@ from sqlalchemy import func
 
 router = APIRouter(
     prefix="/settings",
-    tags=["Settings"]
+    tags=["Settings"],
+    responses={401: {"description": "Not authorized to perform this action."}}
 )
 
 
@@ -33,8 +34,8 @@ def set_notifications(notifications: Notifications,
 
 @router.get("/notifications/", status_code=HTTP_200_OK,
             response_model=Notifications,
-            summary="Set the notifications for the currently logged in user",
-            responses={404: {"description": "User not found"}})
+            summary="Get the notifications for the currently logged in user",
+            responses={404: {"description": "Profile not found"}})
 def get_notifications(user: Users = Depends(auth.get_current_user),
                       db: Session = Depends(create_connection)):
     query = db.query(Settings).filter(Settings.user_id == user.id).first()

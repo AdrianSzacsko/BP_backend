@@ -13,7 +13,8 @@ from app.models import Farms, Users
 
 router = APIRouter(
     prefix="/farms",
-    tags=["Farms"]
+    tags=["Farms"],
+    responses={401: {"description": "Not authorized to perform this action."}}
 )
 
 
@@ -38,8 +39,8 @@ def add_farm(post_farm: PostFarm,
 
 
 @router.delete("/", status_code=HTTP_200_OK,
-               summary="Creates new farm",
-               responses={404: {"description": "Location not found"}})
+               summary="Deletes a farm",
+               responses={404: {"description": "Farm not found"}})
 def delete_farm(
         del_farm: int,
         user: Users = Depends(auth.get_current_user),
@@ -58,8 +59,7 @@ def delete_farm(
 
 @router.get("/", status_code=HTTP_200_OK,
             response_model=List[GetFarms],
-            summary="Retrieves farms for the current user",
-            responses={404: {"description": "Location not found"}})
+            summary="Retrieves farms for the current user")
 def get_farm(user: Users = Depends(auth.get_current_user),
              db: Session = Depends(create_connection)):
     farms = db.query(Farms.id,

@@ -24,14 +24,14 @@ from PIL import Image
 
 router = APIRouter(
     prefix="/profile",
-    tags=["Profile"]
+    tags=["Profile"],
+    responses={401: {"description": "Not authorized to perform this action."}}
 )
 
 
 @router.get("/search/{string}", status_code=HTTP_200_OK,
             response_model=list[Search_profile],
-            summary="Retrieves the available profiles",
-            responses={404: {"description": "String not found"}})
+            summary="Retrieves the available profiles")
 def search_profiles(string: str,
                     user: Users = Depends(auth.get_current_user),
                     db: Session = Depends(create_connection)):
@@ -48,7 +48,7 @@ def search_profiles(string: str,
 @router.get("/{profile_id}", status_code=HTTP_200_OK,
             response_model=Get_Profile,
             summary="Retrieves the available profile",
-            responses={404: {"description": "String not found"}})
+            responses={404: {"description": "Profile not found"}})
 def get_profile(profile_id: str,
                 user: Users = Depends(auth.get_current_user),
                 db: Session = Depends(create_connection)):
@@ -85,7 +85,7 @@ def get_profile(profile_id: str,
 
 @router.get("/profile_pic/{profile_id}", status_code=HTTP_200_OK,
             summary="Retrieves a profile picture based on the id.",
-            responses={404: {"description": "Post picture was not found."}})
+            responses={404: {"description": "Post picture not found."}})
 def get_profile_pic(profile_id: int,
                     db: Session = Depends(create_connection),
                     user: Users = Depends(auth.get_current_user)):
@@ -131,7 +131,7 @@ def get_profile_pic(profile_id: int,
 
 @router.delete("/delete", status_code=HTTP_200_OK,
                summary="Deletes the user profile",
-               responses={404: {"description": "String not found"}})
+               responses={404: {"description": "Profile not found"}})
 def delete_profile(user: Users = Depends(auth.get_current_user),
                    db: Session = Depends(create_connection)):
     query = db.query(Users).filter(Users.id == user.id).first()
@@ -208,7 +208,7 @@ def modify_profile_pic(file: UploadFile = File(...),
 
 @router.put("/delete_pic", status_code=HTTP_200_OK,
             summary="Deletes current profile picture",
-            responses={404: {"description": "Profile was not found"}})
+            responses={404: {"description": "Profile not found"}})
 def delete_profile_pic(db: Session = Depends(create_connection),
                        user: Users = Depends(auth.get_current_user)):
     """
