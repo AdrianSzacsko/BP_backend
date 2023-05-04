@@ -19,7 +19,7 @@ router = APIRouter(
 
 @router.put("/notifications/", status_code=HTTP_200_OK,
             summary="Set the notifications for the currently logged in user",
-            responses={404: {"description": "User not found"}})
+            responses={404: {"description": "Profile not found"}})
 def set_notifications(notifications: Notifications,
                       user: Users = Depends(auth.get_current_user),
                       db: Session = Depends(create_connection)):

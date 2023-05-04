@@ -271,13 +271,13 @@ def delete_post(post_id: int,
     return
 
 
-@router.get("/notifications/{user_id}",  status_code=HTTP_200_OK,
+@router.get("/notifications/{profile_id}",  status_code=HTTP_200_OK,
              summary="Try the notification through firebase",
-             responses={403: {"description": "Incorrect credentials."}})
-def try_notification(user_id: int,
+             responses={403: {"description": "Incorrect credentials"}})
+def try_notification(profile_id: int,
            db: Session = Depends(create_connection)):
 
-    query = db.query(Settings).filter(Settings.user_id == user_id).first()
+    query = db.query(Settings).filter(Settings.user_id == profile_id).first()
     if not query:
         raise HTTPException(
             status_code=HTTP_404_NOT_FOUND,

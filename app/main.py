@@ -67,7 +67,7 @@ scheduler = SchedulerAdmin.bind(site)
 scheduler.timezone = get_localzone()
 
 
-@scheduler.scheduled_job('cron', hour=12, minute=20,)
+@scheduler.scheduled_job('cron', hour=10, minute=10,)
 def interval_task():
     # print("Interval task running...")
     get_alert()
